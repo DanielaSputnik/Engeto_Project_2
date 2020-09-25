@@ -3,44 +3,40 @@ import random
 
 def main():
     print_rules()
-    recursion = True
+    wanna_play_game = True
     board = reset_board()
-    while recursion:
-        print_linebreak()
-        start = random.randint(1, 2)
-        starting_player = select_player()[start % 2]
-        print(f'(¯`·._.·Player {starting_player} starts!·._.·´¯)'.center(60))
+    while wanna_play_game:
+        turn = random.randint(1, 2)
+        print_starting_player(player_by_turn(turn))
         print_board(board)
-        while True:
-            current_player = select_player()[start % 2]
+
+        game_in_progress = True
+        while game_in_progress:
+            current_player = player_by_turn(turn)
             player_move = select_move(current_player)
-            if not place_move(player_move, current_player, board):
-                print('Bzzzt! Wrong. This spot is already taken.')
+            if is_position_free(player_move, board):
+                place_move(player_move, current_player, board)
+            else:
+                print_spot_taken()
                 continue
             print_board(board)
-            if check_for_win(board, current_player):
-                print_linebreak()
-                print(f'(¯`·._.·(¯`·._.· Player {current_player} wins!·._.·´¯)·._.·´¯)'.center(60))
-                print_linebreak()
+            if is_winner(board, current_player):
+                print_winner(current_player)
                 break
             elif check_for_draw(board):
-                print_linebreak()
-                print("It's a draw! ¯\_(⊙︿⊙)_/¯".center(60))
-                print_linebreak()
+                print_draw()
                 break
             else:
-                start += 1
-        if check_recursion():
+                turn += 1
+
+        if user_wants_to_play_again():
             board = reset_board()
-            recursion = True
         else:
-            print_linebreak()
-            print(f"GOODBYE!".center(60))
-            print_linebreak()
-            recursion = False
+            print_goodbye()
+            break
 
 
-def print_rules():
+def print_rules() -> str:
     print('''                      WELCOME TO THE
       _____ ___ ___   _____ _   ___   _____ ___  ___ 
      |_   _|_ _/ __| |_   _/_\ / __| |_   _/ _ \| __|
@@ -58,15 +54,11 @@ def print_rules():
             +---+---+---+      +---+---+---+''')
 
 
-def print_linebreak():
-    print('=' * 60)
-
-
-def reset_board():
+def reset_board() -> list:
     return [' '] * 10
 
 
-def print_board(game_board):
+def print_board(game_board: list) -> str:
     print('+---+---+---+')
     print('| ' + game_board[7] + ' | ' + game_board[8] + ' | ' + game_board[9] + ' |')
     print('+---+---+---+')
@@ -76,83 +68,111 @@ def print_board(game_board):
     print('+---+---+---+')
 
 
-def select_player():
+def player_list() -> tuple:
     player1 = 'X'
     player2 = 'O'
     return player1, player2
 
 
-def select_move(player_mark):
+def player_by_turn(turn: int) -> str:
+    return player_list()[turn % 2]
+
+
+def print_linebreak() -> str:
+    print('=' * 60)
+
+
+def decorator_add_linebreaks(func):
+    def wrapper(*x):
+        print_linebreak()
+        func(*x)
+        print_linebreak()
+    return wrapper
+
+
+@decorator_add_linebreaks
+def print_starting_player(starting_player: str) -> str:
+    print(f'(¯`·._.·Player {starting_player} starts!·._.·´¯)'.center(60))
+
+
+def select_move(player_mark: str) -> int:
     while True:
         try:
-            move_input = int(input(f'Player {player_mark} select your move:'))
+            selected_move = int(input(f'Player {player_mark} select your move:'))
         except ValueError:
-            print('Bzzzt! Wrong. Insert only numbers 1-9.')
+            print_incorrect_number()
+            continue
+        if selected_move not in range(1, 10):
+            print_incorrect_number()
             continue
         else:
-            if move_input not in range(1, 10):
-                print('Bzzzt! Wrong. Insert only numbers 1-9.')
-                continue
-            else:
-                return move_input
+            return selected_move
 
 
-def place_move(position, player_mark, game_board):
-    if game_board[position] != ' ':
-        return False
-    else:
+def print_incorrect_number() -> str:
+    print('Bzzzt! Wrong. Insert only numbers 1-9.')
+
+
+def is_position_free(position: int, game_board: list) -> bool:
+    return bool(game_board[position] == ' ')
+
+
+def print_spot_taken() -> str:
+    print('Bzzzt! Wrong. This spot is already taken.')
+
+
+def place_move(position: int, player_mark: str, game_board: list):
+    if is_position_free(position, game_board):
         game_board[position] = player_mark
-        return True
+    else:
+        print_spot_taken()
 
 
-def check_horizontal_win(game_board, player):
-    if game_board[1:4] == list(player * 3) \
+def check_horizontal_win(game_board: list, player: str) -> bool:
+    return game_board[1:4] == list(player * 3) \
             or game_board[4:7] == list(player * 3) \
-            or game_board[7:10] == list(player * 3):
-        return True
-    else:
-        return False
+            or game_board[7:10] == list(player * 3)
 
 
-def check_vertical_win(game_board, player):
-    if game_board[1:10:3] == list(player * 3) \
+def check_vertical_win(game_board: list, player: str) -> bool:
+    return game_board[1:10:3] == list(player * 3) \
             or game_board[2:10:3] == list(player * 3) \
-            or game_board[3:10:3] == list(player * 3):
-        return True
-    else:
-        return False
+            or game_board[3:10:3] == list(player * 3)
 
 
-def check_diagonal_win(game_board, player):
-    if game_board[1:10:4] == list(player * 3) \
-            or game_board[3:9:2] == list(player * 3):
-        return True
-    else:
-        return False
+def check_diagonal_win(game_board: list, player: str) -> bool:
+    return game_board[1:10:4] == list(player * 3) \
+            or game_board[3:9:2] == list(player * 3)
 
 
-def check_for_win(game_board, player):
-    if check_horizontal_win(game_board, player) \
+def is_winner(game_board: list, player: str) -> bool:
+    return check_horizontal_win(game_board, player) \
             or check_vertical_win(game_board, player) \
-            or check_diagonal_win(game_board, player):
-        return True
-    else:
-        return False
+            or check_diagonal_win(game_board, player)
 
 
-def check_for_draw(game_board):
-    if ' ' not in game_board[1:10]:
-        return True
-    else:
-        return False
+def check_for_draw(game_board: list) -> bool:
+    return ' ' not in game_board[1:10]
 
 
-def check_recursion():
+def user_wants_to_play_again() -> bool:
     recursion_check = input('Do you want to play again? [Y/N]').lower()
-    if recursion_check == 'y':
-        return True
-    else:
-        return False
+    return recursion_check == 'y'
+
+
+@decorator_add_linebreaks
+def print_draw() -> str:
+    print("It's a draw! ¯\_(⊙︿⊙)_/¯".center(60))
+
+
+@decorator_add_linebreaks
+def print_winner(current_player: str) -> str:
+    print(f'(¯`·._.·(¯`·._.· Player {current_player} wins!·._.·´¯)·._.·´¯)'.center(60))
+
+
+@decorator_add_linebreaks
+def print_goodbye() -> str:
+    print(f"GOODBYE!".center(60))
 
 
 main()
